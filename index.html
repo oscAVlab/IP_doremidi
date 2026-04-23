@@ -1209,7 +1209,7 @@ function showToast(msg, type = 'info') {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-// ─── Todos los inputs actualizan el previe w ───────────────────
+// ─── Todos los inputs actualizan el preview ───────────────────
 document.querySelectorAll('.octet, .port-input').forEach(el => {
   el.addEventListener('input', updatePreview);
 });
