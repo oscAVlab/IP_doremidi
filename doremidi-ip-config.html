@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOREMiDi · IP Configurator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Raleway:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a38;
+    --accent: #00e5b4;
+    --accent-dim: rgba(0,229,180,0.12);
+    --accent-glow: rgba(0,229,180,0.25);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.12);
+    --yellow: #f5c542;
+    --yellow-dim: rgba(245,197,66,0.12);
+    --text: #e8eaf0;
+    --text-dim: #7a8099;
+    --text-muted: #454d66;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Raleway', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .logo-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  h1 {
+    font-family: 'Raleway', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  /* MIDI Status bar */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-family: var(--sans);
+    font-size: 12px;
+  }
+
+  .status-indicator {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .status-indicator.connected { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+  .status-indicator.disconnected { background: var(--red); }
+  .status-indicator.searching { background: var(--yellow); animation: pulse 1s infinite; }
+
+  .status-text { color: var(--text-dim); flex: 1; }
+  .status-text strong { color: var(--text); }
+
+  .midi-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .midi-select:focus { border-color: var(--accent); }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .card-label {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* IP Fields */
+  .ip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field.full { grid-column: span 2; }
+
+  label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+
+  .ip-input-row {
+    display: flex;
+    align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .ip-input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .ip-input-row.error { border-color: var(--red); }
+
+  .octet-wrap {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+
+  .octet {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    text-align: center;
+    padding: 10px 4px;
+    width: 44px;
+    -moz-appearance: textfield;
+  }
+
+  .octet::-webkit-outer-spin-button,
+  .octet::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .octet-sep {
+    color: var(--text-muted);
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 300;
+    user-select: none;
+    padding: 0 1px;
+  }
+
+  /* Port input */
+  .port-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  .port-input::-webkit-outer-spin-button,
+  .port-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .port-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* SysEx preview */
+  .sysex-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+
+  .preview-bytes {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 2;
+    color: var(--text-dim);
+    word-break: break-all;
+  }
+
+  .byte-header { color: var(--text-muted); }
+  .byte-ip { color: var(--accent); }
+  .byte-subnet { color: #7eb8f5; }
+  .byte-gateway { color: #b07ef5; }
+  .byte-port { color: var(--yellow); }
+  .byte-tail { color: var(--text-muted); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #00ffc8; transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+
+  /* Copy button */
+  .copy-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .btn-copy {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+  .copy-label { font-size: 11px; color: var(--text-muted); font-family: var(--sans); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 100;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success .toast-icon { color: var(--accent); }
+  .toast.error .toast-icon { color: var(--red); }
+  .toast.info .toast-icon { color: var(--yellow); }
+
+  /* Info box */
+  .info-box {
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,229,180,0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: rgba(0,229,180,0.8);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .info-box strong { color: var(--accent); }
+
+  /* Tab switch */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Presets guardables ── */
+  .presets-section {
+    margin-bottom: 16px;
+  }
+
+  .presets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .presets-title {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .btn-save-preset {
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,229,180,0.3);
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.2s;
+  }
+
+  .btn-save-preset:hover { background: rgba(0,229,180,0.2); }
+
+  .presets-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .preset-chip {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    max-width: 100%;
+  }
+
+  .preset-chip:hover { border-color: var(--accent); }
+
+  .preset-chip-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .preset-chip-btn:hover { color: var(--text); }
+
+  .preset-chip-ip {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 0 8px 0 0;
+  }
+
+  .preset-chip-del {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 7px 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+
+  .preset-chip-del:hover { color: var(--red); background: var(--red-dim); }
+
+  .presets-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 6px 0;
+  }
+
+  /* Modal para nombrar preset */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    width: 340px;
+    max-width: 90vw;
+    transform: translateY(12px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal h3 {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .modal p {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 14px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .modal-input:focus { border-color: var(--accent); }
+
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btns .btn { flex: 1; padding: 10px; font-size: 13px; }
+
+  @media (max-width: 480px) {
+    .ip-grid { grid-template-columns: 1fr; }
+    .field.full { grid-column: span 1; }
+    .octet { width: 38px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <div class="logo-line">
+      <div class="logo-dot"></div>
+      <h1>DORE<span>MiDi</span> · IP CONFIG</h1>
+      <div class="logo-dot"></div>
+    </div>
+    <p class="subtitle">Generador de SysEx para configuración de red — MR-1 Pro / UR-1 Pro</p>
+  </header>
+
+  <!-- MIDI Status -->
+  <div class="status-bar">
+    <div class="status-indicator searching" id="statusDot"></div>
+    <span class="status-text" id="statusText">Buscando dispositivos MIDI...</span>
+    <select class="midi-select" id="midiOutSelect">
+      <option value="">-- Salida MIDI --</option>
+    </select>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('simple')">⚡ Modo Simple</button>
+    <button class="tab" onclick="switchTab('advanced')">⚙ Avanzado</button>
+    <button class="tab" onclick="switchTab('manual')">📋 Manual SysEx</button>
+  </div>
+
+  <!-- SIMPLE TAB -->
+  <div class="panel active" id="panel-simple">
+
+    <div class="info-box">
+      <strong>¿Cómo funciona?</strong> Introduce la IP y parámetros de red. La app genera el mensaje SysEx correcto y lo envía por MIDI al dispositivo DOREMiDi conectado.
+    </div>
+
+    <div class="card">
+      <div class="card-label">Configuración de red</div>
+
+      <div class="ip-grid">
+
+        <div class="field full">
+          <label>Dirección IP</label>
+          <div class="ip-input-row" id="rowIP">
+            <div class="octet-wrap">
+              <input class="octet" type="number" min="0" max="255" placeholder="192" id="ip0" oninput="onOctetInput(this, 'ip1')" onkeydown="octetNav(event, null, 'ip1')">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="168" id="ip1" oninput="onOctetInput(this, 'ip2')" onkeydown="octetNav(event, 'ip0', 'ip2')">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="1" id="ip2" oninput="onOctetInput(this, 'ip3')" onkeydown="octetNav(event, 'ip1', 'ip3')">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="100" id="ip3" oninput="onOctetInput(this, null)" onkeydown="octetNav(event, 'ip2', null)">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Subnet Mask</label>
+          <div class="ip-input-row" id="rowSN">
+            <div class="octet-wrap">
+              <input class="octet" type="number" min="0" max="255" placeholder="255" id="sn0">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="255" id="sn1">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="255" id="sn2">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="0" id="sn3">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Gateway</label>
+          <div class="ip-input-row" id="rowGW">
+            <div class="octet-wrap">
+              <input class="octet" type="number" min="0" max="255" placeholder="192" id="gw0">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="168" id="gw1">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="1" id="gw2">
+              <span class="octet-sep">.</span>
+              <input class="octet" type="number" min="0" max="255" placeholder="1" id="gw3">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Puerto RTP-MIDI</label>
+          <input class="port-input" type="number" id="port" min="1" max="65535" placeholder="5004" value="5004">
+          <span class="field-hint">Por defecto: 5004</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Presets guardables -->
+    <div class="presets-section">
+      <div class="presets-header">
+        <span class="presets-title">Presets guardados</span>
+        <button class="btn-save-preset" onclick="openSaveModal()">+ Guardar actual</button>
+      </div>
+      <div class="presets-grid" id="presetsGrid">
+        <span class="presets-empty">Ningún preset guardado aún</span>
+      </div>
+    </div>
+
+    <!-- SysEx Preview -->
+    <div class="sysex-preview">
+      <div class="card-label">Vista previa SysEx generado</div>
+      <div class="preview-bytes" id="sysexPreview">—</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#454d66"></div>Header / Tail</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>IP Address</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7eb8f5"></div>Subnet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b07ef5"></div>Gateway</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Puerto</div>
+      </div>
+      <div class="copy-row">
+        <button class="btn-copy" onclick="copyRaw()">COPIAR BYTES</button>
+        <span class="copy-label" id="copyFeedback"></span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="clearAll()">Limpiar</button>
+      <button class="btn btn-primary" id="sendBtn" onclick="sendSysEx()" disabled>Enviar por MIDI →</button>
+    </div>
+
+  </div>
+
+  <!-- ADVANCED TAB -->
+  <div class="panel" id="panel-advanced">
+    <div class="card">
+      <div class="card-label">Decodificador SysEx</div>
+      <label style="display:block;margin-bottom:8px;">Pega bytes SysEx (hex separado por espacios)</label>
+      <textarea id="decodeInput" style="
+        width:100%; background:var(--surface2); border:1px solid var(--border);
+        border-radius:6px; color:var(--accent); font-family:var(--mono); font-size:13px;
+        padding:12px; resize:vertical; min-height:80px; outline:none; line-height:1.8;
+      " placeholder="F0 00 21 5E 0E 40 01 09 02 01 06 08 00 00 01 01 01 02 F7"
+        oninput="decodeSysEx()"></textarea>
+      <div id="decodeResult" style="margin-top:16px;font-size:13px;color:var(--text-dim);line-height:2;"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-label">Historial enviados</div>
+      <div id="historyList" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:2.2;">
+        <span style="color:var(--text-muted)">Sin mensajes enviados aún</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL TAB -->
+  <div class="panel" id="panel-manual">
+    <div class="card">
+      <div class="card-label">Envío manual de SysEx</div>
+      <label style="display:block;margin-bottom:8px;">Bytes en hexadecimal (espacio entre cada byte)</label>
+      <textarea id="manualSysex" style="
+        width:100%; background:var(--surface2); border:1px solid var(--border);
+        border-radius:6px; color:var(--accent); font-family:var(--mono); font-size:13px;
+        padding:12px; resize:vertical; min-height:80px; outline:none; line-height:1.8;
+      " placeholder="F0 00 21 5E 0E 40 01 09 02 01 06 08 00 00 01 01 01 02 F7"></textarea>
+      <div style="margin-top:12px;">
+        <button class="btn btn-primary" style="width:100%;" onclick="sendManual()">Enviar SysEx manual →</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-label">Referencia del protocolo</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:2.2;">
+        <div><span style="color:var(--text-muted)">Header fijo: </span><span style="color:var(--text)">F0 00 21 5E 0E 40</span></div>
+        <div><span style="color:var(--text-muted)">Tail: </span><span style="color:var(--text)">F7</span></div>
+        <div style="margin-top:10px;color:var(--text-muted);font-size:11px;">Encoding: cada octeto (0-255) se divide en 3 dígitos BCD.</div>
+        <div style="color:var(--text-muted);font-size:11px;">Ej: 192 → 01 09 02 | 168 → 01 06 08 | 1 → 00 00 01</div>
+        <div style="margin-top:10px;color:var(--text-muted);font-size:11px;">Estructura completa (IP + Subnet + Gateway + Puerto = 12+12+12+6 = 42 bytes de datos)</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal guardar preset -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>Guardar preset</h3>
+    <p id="modalSubtitle">Ponle un nombre para identificarlo rápido</p>
+    <input class="modal-input" id="modalInput" type="text" placeholder="Ej: Escenario principal, FOH, Catering…" maxlength="30"
+      onkeydown="if(event.key==='Enter') confirmSave()">
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmSave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✓</span>
+  <span id="toastMsg">Mensaje enviado</span>
+</div>
+
+<script>
+// ─── Estado ───────────────────────────────────────────────────
+let midiAccess = null;
+let selectedOutput = null;
+let history = [];
+
+// ─── MIDI Init ────────────────────────────────────────────────
+async function initMIDI() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+    midiAccess.onstatechange = refreshMIDIOutputs;
+    refreshMIDIOutputs();
+  } catch (e) {
+    dot.className = 'status-indicator disconnected';
+    txt.innerHTML = `<strong>Sin acceso MIDI</strong> — Activa permisos o usa Chrome/Edge`;
+  }
+}
+
+function refreshMIDIOutputs() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const sel = document.getElementById('midiOutSelect');
+  const btn = document.getElementById('sendBtn');
+
+  sel.innerHTML = '<option value="">-- Salida MIDI --</option>';
+  if (!midiAccess) return;
+
+  const outputs = [...midiAccess.outputs.values()];
+  outputs.forEach(out => {
+    const opt = document.createElement('option');
+    opt.value = out.id;
+    opt.textContent = out.name;
+    sel.appendChild(opt);
+  });
+
+  if (outputs.length > 0) {
+    dot.className = 'status-indicator connected';
+    txt.innerHTML = `<strong>${outputs.length}</strong> salida${outputs.length > 1 ? 's' : ''} MIDI detectada${outputs.length > 1 ? 's' : ''}`;
+    sel.value = outputs[0].id;
+    selectedOutput = outputs[0];
+    btn.disabled = false;
+  } else {
+    dot.className = 'status-indicator disconnected';
+    txt.innerHTML = `Sin salidas MIDI. Conecta el DOREMiDi o activa loopback.`;
+    btn.disabled = true;
+  }
+
+  sel.onchange = () => {
+    selectedOutput = midiAccess.outputs.get(sel.value);
+    btn.disabled = !selectedOutput;
+  };
+}
+
+// ─── Encoding ────────────────────────────────────────────────
+// Cada octeto → 3 bytes BCD (centenas, decenas, unidades)
+function encodeByte(val) {
+  const v = parseInt(val) || 0;
+  return [Math.floor(v / 100), Math.floor((v % 100) / 10), v % 10];
+}
+
+// Puerto → 6 bytes BCD (5 dígitos)
+function encodePort(val) {
+  const v = parseInt(val) || 5004;
+  return [
+    Math.floor(v / 10000),
+    Math.floor((v % 10000) / 1000),
+    Math.floor((v % 1000) / 100),
+    Math.floor((v % 100) / 10),
+    v % 10
+  ];
+}
+
+function buildSysEx(ip, sn, gw, port) {
+  const header = [0xF0, 0x00, 0x21, 0x5E, 0x0E, 0x40];
+  const tail = [0xF7];
+
+  const ipBytes = [...encodeByte(ip[0]), ...encodeByte(ip[1]), ...encodeByte(ip[2]), ...encodeByte(ip[3])];
+  const snBytes = [...encodeByte(sn[0]), ...encodeByte(sn[1]), ...encodeByte(sn[2]), ...encodeByte(sn[3])];
+  const gwBytes = [...encodeByte(gw[0]), ...encodeByte(gw[1]), ...encodeByte(gw[2]), ...encodeByte(gw[3])];
+  const portBytes = encodePort(port);
+
+  return [...header, ...ipBytes, ...snBytes, ...gwBytes, ...portBytes, ...tail];
+}
+
+function toHex(b) { return b.toString(16).toUpperCase().padStart(2, '0'); }
+
+// ─── Preview ─────────────────────────────────────────────────
+function updatePreview() {
+  const ip = getOctets('ip');
+  const sn = getOctets('sn');
+  const gw = getOctets('gw');
+  const port = parseInt(document.getElementById('port').value) || 5004;
+
+  if (ip.some(v => v < 0 || v > 255) || sn.some(v => v < 0 || v > 255) || gw.some(v => v < 0 || v > 255)) {
+    document.getElementById('sysexPreview').innerHTML = '<span style="color:var(--red)">Valores inválidos</span>';
+    return;
+  }
+
+  const bytes = buildSysEx(ip, sn, gw, port);
+  const headerB = bytes.slice(0, 6);
+  const ipB = bytes.slice(6, 18);
+  const snB = bytes.slice(18, 30);
+  const gwB = bytes.slice(30, 42);
+  const portB = bytes.slice(42, 47);
+  const tailB = bytes.slice(47);
+
+  const fmt = (arr, cls) => arr.map(b => `<span class="${cls}">${toHex(b)}</span>`).join(' ');
+
+  document.getElementById('sysexPreview').innerHTML =
+    fmt(headerB, 'byte-header') + ' ' +
+    fmt(ipB, 'byte-ip') + ' ' +
+    fmt(snB, 'byte-subnet') + ' ' +
+    fmt(gwB, 'byte-gateway') + ' ' +
+    fmt(portB, 'byte-port') + ' ' +
+    fmt(tailB, 'byte-tail');
+}
+
+function getOctets(prefix) {
+  return [0,1,2,3].map(i => parseInt(document.getElementById(`${prefix}${i}`).value) || 0);
+}
+
+// ─── Navegación entre octetos ─────────────────────────────────
+function onOctetInput(el, nextId) {
+  let val = parseInt(el.value);
+  if (isNaN(val)) { updatePreview(); return; }
+  if (val > 255) { el.value = 255; }
+  if (el.value.length >= 3 && nextId) {
+    document.getElementById(nextId).focus();
+    document.getElementById(nextId).select();
+  }
+  updatePreview();
+}
+
+function octetNav(e, prevId, nextId) {
+  if (e.key === '.' || e.key === 'Tab') {
+    e.preventDefault();
+    const target = nextId ? document.getElementById(nextId) : null;
+    if (target) { target.focus(); target.select(); }
+  }
+  if (e.key === 'Backspace' && e.target.value === '' && prevId) {
+    e.preventDefault();
+    const prev = document.getElementById(prevId);
+    prev.focus(); prev.select();
+  }
+}
+
+// ─── Presets guardables (localStorage) ───────────────────────
+const PRESETS_KEY = 'doremidi_presets_v1';
+
+function loadPresets() {
+  try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; }
+  catch { return []; }
+}
+
+function savePresets(arr) {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(arr));
+}
+
+function renderPresets() {
+  const presets = loadPresets();
+  const grid = document.getElementById('presetsGrid');
+  if (!presets.length) {
+    grid.innerHTML = '<span class="presets-empty">Ningún preset guardado aún</span>';
+    return;
+  }
+  grid.innerHTML = presets.map((p, i) => `
+    <div class="preset-chip">
+      <button class="preset-chip-btn" onclick="applyPreset(${i})" title="${p.ip} · ${p.sn} · GW ${p.gw} · :${p.port}">
+        ${escHtml(p.name)}
+      </button>
+      <span class="preset-chip-ip">${p.ip}</span>
+      <button class="preset-chip-del" onclick="deletePreset(${i})" title="Eliminar">×</button>
+    </div>
+  `).join('');
+}
+
+function applyPreset(idx) {
+  const presets = loadPresets();
+  const p = presets[idx];
+  if (!p) return;
+  const setIP = (str, prefix) => str.split('.').forEach((v, i) => document.getElementById(`${prefix}${i}`).value = v);
+  setIP(p.ip, 'ip');
+  setIP(p.sn, 'sn');
+  setIP(p.gw, 'gw');
+  document.getElementById('port').value = p.port;
+  updatePreview();
+  showToast(`Preset cargado: ${p.name}`, 'success');
+}
+
+function deletePreset(idx) {
+  const presets = loadPresets();
+  presets.splice(idx, 1);
+  savePresets(presets);
+  renderPresets();
+  showToast('Preset eliminado', 'info');
+}
+
+function openSaveModal() {
+  const ip = getOctets('ip').join('.');
+  const port = document.getElementById('port').value || '5004';
+  document.getElementById('modalSubtitle').textContent = `Configuración actual: ${ip} · Puerto ${port}`;
+  document.getElementById('modalInput').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('modalInput').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function confirmSave() {
+  const name = document.getElementById('modalInput').value.trim();
+  if (!name) { document.getElementById('modalInput').focus(); return; }
+
+  const ip = getOctets('ip').join('.');
+  const sn = getOctets('sn').join('.');
+  const gw = getOctets('gw').join('.');
+  const port = document.getElementById('port').value || '5004';
+
+  const presets = loadPresets();
+  presets.push({ name, ip, sn, gw, port });
+  savePresets(presets);
+  renderPresets();
+  closeModal();
+  showToast(`Preset "${name}" guardado`, 'success');
+}
+
+// Cerrar modal al click fuera
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Utils ────────────────────────────────────────────────────
+function sendSysEx() {
+  if (!selectedOutput) { showToast('Sin salida MIDI seleccionada', 'error'); return; }
+
+  const ip = getOctets('ip');
+  const sn = getOctets('sn');
+  const gw = getOctets('gw');
+  const port = parseInt(document.getElementById('port').value) || 5004;
+  const bytes = buildSysEx(ip, sn, gw, port);
+
+  try {
+    selectedOutput.send(bytes);
+    const hexStr = bytes.map(toHex).join(' ');
+    addHistory(ip.join('.'), hexStr);
+    showToast(`SysEx enviado → ${ip.join('.')}`, 'success');
+  } catch(e) {
+    showToast('Error al enviar: ' + e.message, 'error');
+  }
+}
+
+function sendManual() {
+  if (!selectedOutput) { showToast('Sin salida MIDI seleccionada', 'error'); return; }
+  const raw = document.getElementById('manualSysex').value.trim();
+  const bytes = raw.split(/\s+/).map(h => parseInt(h, 16)).filter(n => !isNaN(n));
+  if (!bytes.length || bytes[0] !== 0xF0) { showToast('Formato inválido: debe empezar con F0', 'error'); return; }
+  try {
+    selectedOutput.send(bytes);
+    showToast('SysEx manual enviado', 'success');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ─── Decode ───────────────────────────────────────────────────
+function decodeSysEx() {
+  const raw = document.getElementById('decodeInput').value.trim();
+  const bytes = raw.split(/\s+/).map(h => parseInt(h, 16)).filter(n => !isNaN(n));
+  const res = document.getElementById('decodeResult');
+
+  if (bytes.length < 48) {
+    res.innerHTML = `<span style="color:var(--text-muted)">Necesita al menos 48 bytes para IP+Subnet+Gateway+Puerto</span>`;
+    return;
+  }
+
+  // header: bytes[0-5] = F0 00 21 5E 0E 40
+  const isValid = bytes[0] === 0xF0 && bytes[1] === 0x00 && bytes[2] === 0x21 && bytes[3] === 0x5E;
+
+  const decodeOctet = (b) => b[0]*100 + b[1]*10 + b[2];
+  const decodeIP = (offset) => [0,1,2,3].map(i => decodeOctet(bytes.slice(offset + i*3, offset + i*3 + 3)));
+  const decodePort = (offset) => bytes[offset]*10000 + bytes[offset+1]*1000 + bytes[offset+2]*100 + bytes[offset+3]*10 + bytes[offset+4];
+
+  const ip = decodeIP(6);
+  const sn = decodeIP(18);
+  const gw = decodeIP(30);
+  const port = decodePort(42);
+
+  res.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;">
+      <div><span style="color:var(--text-muted)">Header válido: </span><span style="color:${isValid ? 'var(--accent)' : 'var(--red)'}">${isValid ? '✓ DOREMiDi' : '✗ No reconocido'}</span></div>
+      <div></div>
+      <div><span style="color:var(--text-muted)">IP: </span><span style="color:var(--accent)">${ip.join('.')}</span></div>
+      <div><span style="color:var(--text-muted)">Subnet: </span><span style="color:#7eb8f5">${sn.join('.')}</span></div>
+      <div><span style="color:var(--text-muted)">Gateway: </span><span style="color:#b07ef5">${gw.join('.')}</span></div>
+      <div><span style="color:var(--text-muted)">Puerto: </span><span style="color:var(--yellow)">${port}</span></div>
+    </div>
+  `;
+}
+
+// ─── History ──────────────────────────────────────────────────
+function addHistory(ip, hex) {
+  const now = new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  history.unshift({ ip, hex, time: now });
+  if (history.length > 8) history.pop();
+  const el = document.getElementById('historyList');
+  el.innerHTML = history.map(h =>
+    `<div style="border-bottom:1px solid var(--border);padding:6px 0;">
+      <span style="color:var(--text-muted)">${h.time}</span>
+      <span style="color:var(--accent);margin:0 8px">→ ${h.ip}</span>
+      <span style="font-size:10px;opacity:0.5">${h.hex}</span>
+    </div>`
+  ).join('');
+}
+
+// ─── Copy ─────────────────────────────────────────────────────
+function copyRaw() {
+  const ip = getOctets('ip'), sn = getOctets('sn'), gw = getOctets('gw');
+  const port = parseInt(document.getElementById('port').value) || 5004;
+  const bytes = buildSysEx(ip, sn, gw, port);
+  const hex = bytes.map(toHex).join(' ');
+
+  const feedback = document.getElementById('copyFeedback');
+
+  // Método 1: clipboard API moderna
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(hex).then(() => {
+      feedback.textContent = '¡Copiado!';
+      setTimeout(() => feedback.textContent = '', 2000);
+    }).catch(() => fallbackCopy(hex, feedback));
+  } else {
+    fallbackCopy(hex, feedback);
+  }
+}
+
+function fallbackCopy(text, feedbackEl) {
+  // Método 2: textarea temporal + execCommand
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    const ok = document.execCommand('copy');
+    feedbackEl.textContent = ok ? '¡Copiado!' : 'Error al copiar';
+  } catch {
+    feedbackEl.textContent = 'Error al copiar';
+  }
+  document.body.removeChild(ta);
+  setTimeout(() => feedbackEl.textContent = '', 2000);
+}
+
+// ─── Utils ────────────────────────────────────────────────────
+function clearAll() {
+  ['ip0','ip1','ip2','ip3','sn0','sn1','sn2','sn3','gw0','gw1','gw2','gw3'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('port').value = '5004';
+  document.getElementById('sysexPreview').textContent = '—';
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['simple','advanced','manual'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+let toastTimer;
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const m = document.getElementById('toastMsg');
+  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  m.textContent = msg;
+  t.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── Todos los inputs actualizan el preview ───────────────────
+document.querySelectorAll('.octet, .port-input').forEach(el => {
+  el.addEventListener('input', updatePreview);
+});
+
+// ─── Init ─────────────────────────────────────────────────────
+initMIDI();
+updatePreview();
+renderPresets();
+</script>
+</body>
+</html>
